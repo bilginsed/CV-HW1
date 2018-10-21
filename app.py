@@ -50,10 +50,52 @@ class App(QMainWindow):
         elif not self.targetLoaded:
             # Error: "Load target image" in MessageBox
             return NotImplementedError
+    
+    def calcHistogram(self,I):
+        hist = [[0] * 256, [0] * 256, [0] * 256]
+        for H in I:
+            for V in H:
+                hist[0][int(V[0])] += 1
+                hist[1][int(V[1])] += 1
+                hist[2][int(V[2])] += 1
+        return hist
 
-    def calcHistogram(self, I):
-        # Calculate histogram
-        return NotImplementedError
+    def calcP(self,hist):
+        totalR = sum(hist[0])
+        totalG = sum(hist[1])
+        totalB = sum(hist[2])
+        P = [[0] * 256, [0] * 256, [0] * 256]
+        for i in range(256):
+            if i != 0:
+                P[0][i] = P[0][i-1] + (hist[0][i]/totalR)
+                P[1][i] = P[1][i-1] + (hist[1][i]/totalG)
+                P[2][i] = P[2][i-1] + (hist[2][i]/totalB)
+            else:
+                P[0][i] = (hist[0][i] / totalR)
+                P[1][i] = (hist[1][i] / totalG)
+                P[2][i] = (hist[2][i] / totalB)
+        return P
+
+    def calcLut(self,input_p,target_p):
+        lut = [[0] * 256, [0] * 256, [0] * 256]
+        gj = [0,0,0]
+        for gi in range(255):
+            for i in range(3):
+                while input_p[i][gi] > target_p[i][gj[i]] and gj[i]<255:
+                    gj[i]+=1
+                lut[i][gi] = gj[i]
+        return lut
+
+    def remap(self,image,lut):
+        h,w = len(image),len(image[0])
+        re_img = np.zeros([h, w, 4], np.float32)
+        for i in range(h):
+            for j in range(w):
+                re_img[i][j][0] = np.float32(lut[0][int(image[i][j][0])] / 255.0)
+                re_img[i][j][1] = np.float32(lut[1][int(image[i][j][1])] / 255.0)
+                re_img[i][j][2] = np.float32(lut[2][int(image[i][j][2])] / 255.0)
+                re_img[i][j][3] = np.float32(int(image[i][j][3]) / 255.0)
+        return re_img
 
 class PlotCanvas(FigureCanvas):
     def __init__(self, hist, parent=None, width=5, height=4, dpi=100):
